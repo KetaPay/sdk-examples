@@ -1,0 +1,13 @@
+{
+  "name": "KetaPay SDK examples",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/php:1": { "version": "8.3", "installComposer": true }
+  },
+  "forwardPorts": [4242],
+  "portsAttributes": { "4242": { "label": "Example shop", "onAutoForward": "openPreview" } },
+  "secrets": {
+    "KETAPAY_SECRET_KEY": { "description": "Your sk_test_ key from the KetaPay dashboard (Developers → API keys)" }
+  }
+}

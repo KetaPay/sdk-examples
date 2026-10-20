@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your order</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Your order</h1>
+    <p>Status: <span class="status" id="status">loading…</span></p>
+    <p class="muted" id="hint"></p>
+    <!-- In a real shop this button lives in your admin, not on the buyer's page -->
+    <button id="ship" hidden>Mark as shipped (shop owner)</button>
+  </main>
+  <script>
+    const id = new URLSearchParams(location.search).get('order')
+    const hints = {
+      awaiting_payment: 'Waiting for KetaPay to confirm your payment.',
+      paid: 'Paid. The money is held by KetaPay until you confirm delivery.',
+      shipped: 'On its way. KetaPay asks you to confirm when it arrives; the shop is paid then.',
+      completed: 'Done: you confirmed delivery and the shop has been paid.',
+      refunded: 'Refunded to you.',
+    }
+    async function refresh() {
+      const res = await fetch(`/orders/${encodeURIComponent(id)}`)
+      if (!res.ok) return void (document.getElementById('status').textContent = 'not found')
+      const order = await res.json()
+      document.getElementById('status').textContent = order.status.replace('_', ' ')
+      document.getElementById('hint').textContent = hints[order.status] ?? ''
+      document.getElementById('ship').hidden = order.status !== 'paid'
+    }
+    document.getElementById('ship').onclick = async (e) => {
+      e.target.disabled = true
+      await fetch(`/orders/${encodeURIComponent(id)}/ship`, { method: 'POST' })
+      e.target.disabled = false
+      refresh()
+    }
+    refresh()
+    setInterval(refresh, 3000)
+  </script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+:root { color-scheme: light dark; --ink: #1c1530; --muted: #6b6480; --brand: #3b0764; --line: #e6e1ef; --bg: #faf9fc; }
+@media (prefers-color-scheme: dark) { :root { --ink: #f2eff8; --muted: #a59fb6; --brand: #c4a1f0; --line: #2d2640; --bg: #14101d; } }
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+main { max-width: 440px; margin: 48px auto; padding: 0 16px; }
+.card { border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.price { font-size: 28px; font-weight: 600; margin: 12px 0; }
+.muted { color: var(--muted); font-size: 14px; }
+label { display: block; font-size: 14px; margin: 16px 0 6px; }
+input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: transparent; color: inherit; }
+button { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 999px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+@media (prefers-color-scheme: dark) { button { color: #14101d; } }
+button[disabled] { opacity: .5; cursor: default; }
+.status { font-weight: 600; }
