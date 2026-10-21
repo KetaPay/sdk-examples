@@ -1,7 +1,7 @@
 <?php
 
-// A freelance platform: a client pays for a project up front in stages (milestones), KetaPay holds
-// the money, and each stage is paid to the freelancer only when the client accepts it. The same
+// Gigline: a freelance platform. A client pays for a project up front in stages (milestones), KetaPay
+// holds the money, and each stage is paid to the freelancer only when the client accepts it. The same
 // routes as ../node:
 //
 // 1. POST /projects                                checkout session with the plan: Design, Build, Launch
@@ -70,10 +70,10 @@ $view = static fn(array $project, ?Escrow $escrow): array => [
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/';
 
-// The platform's pages, shared with the Node version
+// Gigline's pages, shared with the Node version
 $file = realpath(__DIR__ . '/../public' . ($path === '/' ? '/index.html' : $path));
 if ($method === 'GET' && $file !== false && str_starts_with($file, realpath(__DIR__ . '/../public')) && is_file($file)) {
-    $types = ['html' => 'text/html', 'css' => 'text/css'];
+    $types = ['html' => 'text/html', 'css' => 'text/css', 'js' => 'text/javascript'];
     header('Content-Type: ' . ($types[pathinfo($file, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
     readfile($file);
 
@@ -83,7 +83,7 @@ if ($method === 'GET' && $file !== false && str_starts_with($file, realpath(__DI
 try {
     // Step 1: the client funds the project
     if ($method === 'POST' && $path === '/projects') {
-        $project = ['id' => bin2hex(random_bytes(16)), 'status' => 'awaiting_payment', 'escrow_id' => null];
+        $project = ['id' => bin2hex(random_bytes(16)), 'status' => 'awaiting_payment', 'escrow_id' => null, 'webhooks' => []];
         $session = $ketapay->checkoutSessions->create([
             'amount' => 200_000_000, // kobo: ₦2,000,000, the sum of the stages
             'category' => 'services',
@@ -97,7 +97,7 @@ try {
             'buyer' => ['email' => (string) ($_POST['client'] ?? '')],
             'seller' => ['email' => (string) ($_POST['freelancer'] ?? '')],
             'external_reference' => $project['id'],
-            'return_url' => "$baseUrl/project.html?project={$project['id']}",
+            'return_url' => "$baseUrl/client.html?project={$project['id']}",
         ]);
         $save($project + ['client' => (string) $_POST['client'], 'freelancer' => (string) $_POST['freelancer']]);
         header('Location: ' . $session->url, true, 303);
@@ -118,8 +118,8 @@ try {
         return;
     }
 
-    // Step 3: the freelancer delivers the current stage. A file link is fetched and kept by KetaPay,
-    // so it can't change after delivery (PDF, image, Word or Excel, up to 25 MB).
+    // Step 3: the freelancer delivers the current stage. KetaPay fetches a file link once and records its
+    // fingerprint (type, size, SHA-256), so a file swapped later is caught (PDF, image, Word or Excel, up to 25 MB).
     if ($method === 'POST' && preg_match('#^/projects/([^/]+)/freelancer/deliver$#', $path, $m)) {
         $project = $projects()[$m[1]] ?? null;
         if ($project === null || $project['escrow_id'] === null) {
@@ -157,15 +157,16 @@ try {
         return;
     }
 
-    // Step 5
-    if ($method === 'GET' && preg_match('#^/projects/([^/]+)$#', $path, $m)) {
+    // Step 5, and the "what's happening" panel: the escrow as KetaPay has it, and the webhooks received
+    if ($method === 'GET' && preg_match('#^/projects/([^/]+)(/activity)?$#', $path, $m)) {
         $project = $projects()[$m[1]] ?? null;
         if ($project === null) {
             http_response_code(404);
 
             return;
         }
-        $json($view($project, $project['escrow_id'] !== null ? $ketapay->escrows->retrieve($project['escrow_id']) : null));
+        $escrow = $project['escrow_id'] !== null ? $ketapay->escrows->retrieve($project['escrow_id']) : null;
+        $json(isset($m[2]) ? ['escrow' => $escrow?->toArray(), 'webhooks' => $project['webhooks']] : $view($project, $escrow));
 
         return;
     }
@@ -182,10 +183,9 @@ try {
         }
         $escrow = $event->data->object;
         $project = $projects()[$escrow->external_reference ?? ''] ?? null;
-        if ($project !== null && $event->type === 'escrow.funded') {
-            $save(['status' => 'funded', 'escrow_id' => $escrow->id] + $project);
-        }
         if ($project !== null) {
+            $project['webhooks'][] = ['type' => $event->type, 'received_at' => gmdate('Y-m-d\TH:i:s\Z')];
+            $save($event->type === 'escrow.funded' ? ['status' => 'funded', 'escrow_id' => $escrow->id] + $project : $project);
             error_log("{$event->type}: project {$project['id']}");
         }
         http_response_code(200);

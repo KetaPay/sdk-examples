@@ -1,0 +1,13 @@
+{
+  "name": "ketapay-examples-tools",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "scenarios": "node run-scenarios.mjs",
+    "sync": "node sync-shared.mjs"
+  },
+  "dependencies": {
+    "@ketapay/node": "^0.1.0-beta.1"
+  }
+}

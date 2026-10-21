@@ -1,15 +1,15 @@
 <?php
 
-// A marketplace: your customers buy from and sell to each other, KetaPay holds the money, and you
-// take a commission on each sale. The same routes as ../node:
+// Swapmart: a marketplace where customers buy from and sell to each other. KetaPay holds the money,
+// and Swapmart takes a commission on each sale. The same routes as ../node:
 //
-// 1. POST /listings/{id}/buy                 checkout session with the buyer, the seller and your commission
-// 2. KetaPay's page                          the buyer pays; the money is held by KetaPay
+// 1. POST /listings/{id}/buy                 checkout session with the buyer, the listing's seller and the commission
+// 2. KetaPay's checkout page                 the buyer pays; KetaPay holds the money
 // 3. POST /orders/{id}/seller/code|confirm   the seller proves it's them with a one-time code, then marks it sent
 // 4. POST /orders/{id}/buyer/code|confirm    the buyer proves it's them, then confirms it arrived: the seller is paid
 // 5. POST /webhooks                          keeps the order in step with KetaPay, whatever happens elsewhere
 //
-// Your key alone never moves your customers' money: each step that does needs that customer's token.
+// Swapmart's key alone never moves its customers' money: each step that does needs that customer's token.
 // Run: composer start (PHP's built-in server, with this file as the router)
 
 declare(strict_types=1);
@@ -41,8 +41,20 @@ const LISTINGS = [
     'iphone-15' => [
         'title' => 'iPhone 15 Pro Max, 256GB',
         'description' => 'Used, 91% battery, no scratches, Face ID works. Box and cable included.',
-        'amount' => 45_000_000, // kobo: ₦450,000
+        'price' => 45_000_000, // kobo: ₦450,000
         'seller' => ['email' => 'tunde@example.com', 'name' => 'Tunde Bello'],
+    ],
+    'ps5' => [
+        'title' => 'PlayStation 5, disc edition',
+        'description' => 'Bought 2024, two controllers, all cables, works perfectly. Original box.',
+        'price' => 52_000_000,
+        'seller' => ['email' => 'chioma@example.com', 'name' => 'Chioma Eze'],
+    ],
+    'bicycle' => [
+        'title' => 'Road bike, 54cm frame',
+        'description' => 'Aluminium frame, Shimano gears, new tyres, serviced last month. Pickup in Yaba.',
+        'price' => 18_000_000,
+        'seller' => ['email' => 'musa@example.com', 'name' => 'Musa Bello'],
     ],
 ];
 $store = __DIR__ . '/var/orders.json';
@@ -55,6 +67,7 @@ $save = static function (array $order) use ($store, $orders): array {
 
     return $order;
 };
+$summary = static fn(array $o): array => array_intersect_key($o, array_flip(['id', 'title', 'buyer', 'seller', 'status', 'commission']));
 $json = static function (mixed $body, int $status = 200): void {
     http_response_code($status);
     header('Content-Type: application/json');
@@ -65,10 +78,10 @@ $input = static fn(): array => json_decode((string) file_get_contents('php://inp
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/';
 
-// The marketplace's pages, shared with the Node version
+// Swapmart's pages, shared with the Node version
 $file = realpath(__DIR__ . '/../public' . ($path === '/' ? '/index.html' : $path));
 if ($method === 'GET' && $file !== false && str_starts_with($file, realpath(__DIR__ . '/../public')) && is_file($file)) {
-    $types = ['html' => 'text/html', 'css' => 'text/css'];
+    $types = ['html' => 'text/html', 'css' => 'text/css', 'js' => 'text/javascript'];
     header('Content-Type: ' . ($types[pathinfo($file, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
     readfile($file);
 
@@ -76,6 +89,12 @@ if ($method === 'GET' && $file !== false && str_starts_with($file, realpath(__DI
 }
 
 try {
+    if ($method === 'GET' && $path === '/api/listings') {
+        $json(array_map(static fn(string $id, array $l): array => ['id' => $id, 'title' => $l['title'], 'price' => $l['price'], 'seller' => $l['seller']['name']], array_keys(LISTINGS), LISTINGS));
+
+        return;
+    }
+
     // Step 1: the buyer clicked "Buy with escrow"
     if ($method === 'POST' && preg_match('#^/listings/([^/]+)/buy$#', $path, $m)) {
         $listing = LISTINGS[$m[1]] ?? null;
@@ -84,21 +103,21 @@ try {
 
             return;
         }
-        $order = ['id' => bin2hex(random_bytes(16)), 'status' => 'awaiting_payment', 'escrow_id' => null];
-        $buyer = ['email' => (string) ($_POST['email'] ?? '')];
+        $email = (string) ($_POST['email'] ?? '');
+        $order = ['id' => bin2hex(random_bytes(16)), 'title' => $listing['title'], 'status' => 'awaiting_payment', 'escrow_id' => null, 'webhooks' => []];
         $session = $ketapay->checkoutSessions->create([
-            'amount' => $listing['amount'],
+            'amount' => $listing['price'],
             'category' => 'goods',
             'title' => $listing['title'],
             'description' => $listing['description'],
-            'buyer' => $buyer,
+            'buyer' => ['email' => $email],
             'seller' => $listing['seller'],
-            // Your cut, taken from the seller's side when the money is released
+            // Swapmart's cut, taken from the seller's side when the money is released
             'commission' => ['rate_bps' => (int) $env('COMMISSION_BPS', '500')],
             'external_reference' => $order['id'],
             'return_url' => "$baseUrl/order.html?order={$order['id']}",
         ]);
-        $save($order + ['buyer' => $buyer['email'], 'seller' => $listing['seller']['email']]);
+        $save($order + ['buyer' => $email, 'seller' => $listing['seller']['email'], 'commission' => $session->fees->commission]);
         header('Location: ' . $session->url, true, 303);
 
         return;
@@ -112,16 +131,15 @@ try {
 
             return;
         }
-        $session = $ketapay->customerSessions->create(['email' => $order[$m[2]]]);
-        $json(['session_id' => $session->id]);
+        $json(['session_id' => $ketapay->customerSessions->create(['email' => $order[$m[2]]])->id]);
 
         return;
     }
 
-    // Second half: the code proves it's them, and their token lets you act for them, this once
+    // Second half: the code proves it's them, and their token lets Swapmart act for them, this once
     if ($method === 'POST' && preg_match('#^/orders/([^/]+)/(seller|buyer)/confirm$#', $path, $m)) {
         $order = $orders()[$m[1]] ?? null;
-        if ($order === null) {
+        if ($order === null || $order['escrow_id'] === null) {
             http_response_code(404);
 
             return;
@@ -137,12 +155,12 @@ try {
             $ketapay->escrows->milestones->release($escrow->id, $milestone->id, [], ['customerToken' => $token]);
             $order['status'] = 'completed';
         }
-        $json(['id' => $order['id'], 'status' => $save($order)['status']]);
+        $json($summary($save($order)));
 
         return;
     }
 
-    // Step 5: KetaPay tells you what happened. Read the raw body: the signature covers it exactly.
+    // Step 5: KetaPay tells Swapmart what happened. Read the raw body: the signature covers it exactly.
     if ($method === 'POST' && $path === '/webhooks') {
         try {
             $event = $ketapay->webhooks->verify((string) file_get_contents('php://input'), $_SERVER['HTTP_KETAPAY_SIGNATURE'] ?? null, (string) $env('KETAPAY_WEBHOOK_SECRET'));
@@ -155,6 +173,7 @@ try {
         $escrow = $event->data->object;
         $order = $orders()[$escrow->external_reference ?? ''] ?? null;
         if ($order !== null) {
+            $order['webhooks'][] = ['type' => $event->type, 'received_at' => gmdate('Y-m-d\TH:i:s\Z')];
             $order = match ($event->type) {
                 'escrow.funded' => ['status' => 'paid', 'escrow_id' => $escrow->id] + $order,
                 'milestone.delivered' => ['status' => 'shipped'] + $order,
@@ -170,9 +189,28 @@ try {
         return;
     }
 
-    if ($method === 'GET' && preg_match('#^/orders/([^/]+)$#', $path, $m)) {
+    // The platform admin's list, newest first, with the commission each sale earns
+    if ($method === 'GET' && $path === '/orders') {
+        $json(array_map($summary, array_reverse(array_values($orders()))));
+
+        return;
+    }
+
+    if ($method === 'GET' && preg_match('#^/orders/([^/]+)(/activity)?$#', $path, $m)) {
         $order = $orders()[$m[1]] ?? null;
-        $order !== null ? $json(['id' => $order['id'], 'status' => $order['status']]) : http_response_code(404);
+        if ($order === null) {
+            http_response_code(404);
+
+            return;
+        }
+        if (!isset($m[2])) {
+            $json($summary($order));
+
+            return;
+        }
+        // The "what's happening" panel: the escrow as KetaPay has it, and the webhooks Swapmart received
+        $escrow = $order['escrow_id'] !== null ? $ketapay->escrows->retrieve($order['escrow_id'])->toArray() : null;
+        $json(['escrow' => $escrow, 'webhooks' => $order['webhooks']]);
 
         return;
     }

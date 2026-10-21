@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your sale · Keyhaus</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div class="bar"><strong>Keyhaus · owner</strong><a id="other">Buyer's view</a></div></header>
+  <main class="wrap split">
+    <section class="card">
+      <p class="muted">You're selling</p>
+      <h1 id="title">…</h1>
+      <p>Sale: <span class="status" id="status">loading…</span></p>
+      <ul class="steps" id="stages"></ul>
+      <div id="deliver" hidden>
+        <h2>Hand over <span class="current"></span></h2>
+        <label for="note">What you handed over</label>
+        <textarea id="note" rows="2" maxlength="160" placeholder="Signed sale agreement sent to the buyer's lawyer"></textarea>
+        <label for="link">Link to the document (PDF or image, optional)</label>
+        <input id="link" type="url" placeholder="https://…/sale-agreement.pdf">
+        <div class="row"><input id="code" placeholder="Code" inputmode="numeric"><button id="go"></button></div>
+      </div>
+      <p class="note">The buyer has paid the full price and KetaPay holds it. You're paid each stage when the buyer accepts it,
+        less KetaPay's fee and Keyhaus's commission. A large payout to an account that hasn't verified its identity
+        with KetaPay waits until you do.</p>
+    </section>
+    <aside class="card" id="activity"></aside>
+  </main>
+  <script type="module">
+    import { codeStep } from './code-step.js'
+    import { loadSale, saleId } from './stages.js'
+    document.getElementById('other').href = `/buyer.html?sale=${saleId}`
+    let current = null
+    const refresh = () => loadSale((m) => {
+      current = m
+      document.getElementById('deliver').hidden = m?.status !== 'funded'
+    })
+    codeStep({
+      button: document.getElementById('go'),
+      input: document.getElementById('code'),
+      codeUrl: `/sales/${saleId}/owner/code`,
+      confirmUrl: `/sales/${saleId}/owner/deliver`,
+      extra: () => ({ milestone_id: current?.id, note: document.getElementById('note').value, link: document.getElementById('link').value }),
+      done: () => {
+        document.getElementById('note').value = ''
+        document.getElementById('link').value = ''
+        refresh()
+      },
+    })
+    refresh()
+    setInterval(refresh, 5000)
+  </script>
+</body>
+</html>
