@@ -59,7 +59,7 @@ app.get('/api/listings', (_req, res) =>
 )
 
 // Step 1: the buyer clicked "Buy with escrow"
-app.post('/listings/:id/buy', express.urlencoded({ extended: false }), async (req, res) => {
+app.post('/listings/:id/buy', express.urlencoded({ extended: false }), express.json(), async (req, res) => {
   const listing = LISTINGS[req.params.id]
   if (!listing) return res.sendStatus(404)
   const order = { id: randomUUID(), title: listing.title, status: 'awaiting_payment', escrow_id: null, webhooks: [] }
@@ -76,6 +76,8 @@ app.post('/listings/:id/buy', express.urlencoded({ extended: false }), async (re
     return_url: `${BASE_URL}/order.html?order=${order.id}`,
   })
   orders.set(order.id, { ...order, buyer: req.body.email, seller: listing.seller.email, commission: session.fees.commission })
+  // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+  if (req.is('json')) return res.json({ url: session.url, return_url: session.return_url })
   res.redirect(303, session.url)
 })
 

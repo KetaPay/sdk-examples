@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pagebound</title>
   <link rel="stylesheet" href="/style.css">
+  <!-- @ketapay/checkout, for "Pay on this page". It takes no keys: it opens a checkout url the server made. -->
+  <script src="https://js.ketapay.com/v1/checkout.js"></script>
 </head>
 <body>
   <header><div class="bar"><strong>Pagebound</strong><span class="muted">E-books and courses</span></div></header>
@@ -28,13 +30,22 @@
         card.innerHTML = `<span class="tag">Digital</span><h2></h2><p class="price"></p>
           <input type="hidden" name="product"><label>Your email</label>
           <input name="email" type="email" required placeholder="you@example.com">
-          <button type="submit">Pay with escrow</button>`
+          <button type="submit">Pay with escrow</button>
+          <button type="button" class="secondary" data-pay-here>Pay on this page</button>`
         card.querySelector('h2').textContent = p.name
         card.querySelector('.price').textContent = naira(p.price)
         card.querySelector('[name=product]').value = p.id
         return card
       }),
     )
+  </script>
+  <script type="module">
+    import { payHere } from './pay-here.js'
+    // "Pay on this page": the same form, with KetaPay's checkout opened over the page (see pay-here.js)
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-pay-here]')
+      if (button) payHere(button.form)
+    })
   </script>
 </body>
 </html>

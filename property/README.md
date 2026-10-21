@@ -37,7 +37,8 @@ the money. An owner new to KetaPay has large payouts held until they verify thei
 ## What's in it
 
 ```
-public/index.html    the listing: price, stages, "Buy with escrow"
+public/index.html    the listing: price, stages, "Buy with escrow" or "Pay on this page"
+public/pay-here.js   "Pay on this page": the same checkout opened over the page with @ketapay/checkout
 public/buyer.html    the buyer's view: accept the handed-over stage, the "what's happening" panel
 public/owner.html    the owner's view: hand over the current stage with a document, the panel
 public/admin.html    the agency admin: every sale, its commission, links to each side's view
@@ -50,7 +51,7 @@ scenarios/           what must hold, run against either server
 | Route | What happens |
 | --- | --- |
 | `GET /api/listings/{id}` | The listing and its stages, worked out on the server so they always add up to the price |
-| `POST /listings/{id}/buy` | A checkout session: `category: property`, three `milestones`, the survey plan in `attachments`, the owner as `seller`, `commission` with `max_amount` |
+| `POST /listings/{id}/buy` | A checkout session: `category: property`, three `milestones`, the survey plan in `attachments`, the owner as `seller`, `commission` with `max_amount`. A JSON post gets `{ url, return_url }` back instead, for "Pay on this page" |
 | `POST /sales/{id}/{owner\|buyer}/code` | KetaPay emails that person a one-time code |
 | `POST /sales/{id}/owner/deliver` | With the owner's code: hands over the current stage, with a note and a document link |
 | `POST /sales/{id}/buyer/accept` | With the buyer's code: accepts the stage and pays the owner for it |
@@ -79,3 +80,4 @@ cd ../tools && npm install && npm run scenarios -- property node   # or php
 3. The buyer can't pay the owner for a stage that hasn't been handed over.
 4. The documents stage can't be handed over before the deposit stage is paid.
 5. A webhook not signed by KetaPay is refused and changes nothing.
+6. A JSON purchase gets the checkout `url` back, for "Pay on this page" to open over the page.

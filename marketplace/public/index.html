@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Swapmart</title>
   <link rel="stylesheet" href="/style.css">
+  <!-- @ketapay/checkout, for "Pay on this page". It takes no keys: it opens a checkout url the server made. -->
+  <script src="https://js.ketapay.com/v1/checkout.js"></script>
 </head>
 <body>
   <header><div class="bar"><strong>Swapmart</strong><a href="/admin.html">Platform admin</a></div></header>
@@ -26,13 +28,21 @@
         card.method = 'post'
         card.action = `/listings/${encodeURIComponent(l.id)}/buy`
         card.innerHTML = `<p class="muted"></p><h2></h2><p class="price"></p><label>Your email</label>
-          <input name="email" type="email" required placeholder="you@example.com"><button type="submit">Buy with escrow</button>`
+          <input name="email" type="email" required placeholder="you@example.com"><button type="submit">Buy with escrow</button><button type="button" class="secondary" data-pay-here>Pay on this page</button>`
         card.querySelector('.muted').textContent = `Sold by ${l.seller}`
         card.querySelector('h2').textContent = l.title
         card.querySelector('.price').textContent = naira(l.price)
         return card
       }),
     )
+  </script>
+  <script type="module">
+    import { payHere } from './pay-here.js'
+    // "Pay on this page": the same form, with KetaPay's checkout opened over the page (see pay-here.js)
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-pay-here]')
+      if (button) payHere(button.form)
+    })
   </script>
 </body>
 </html>

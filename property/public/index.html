@@ -1,48 +1,75 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Keyhaus</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body>
-  <header><div class="bar"><strong>Keyhaus</strong><a href="/admin.html">Agency admin</a></div></header>
-  <main class="wrap">
-    <section class="card">
-      <span class="tag">Property</span>
-      <h1 id="title">…</h1>
-      <p class="muted" id="owner"></p>
-      <p class="price" id="price"></p>
-      <p id="description"></p>
-      <h2>You pay it all now. The owner is paid in stages, as each one happens:</h2>
-      <table id="stages"></table>
-      <p class="note">KetaPay holds your money, not Keyhaus and not the owner. If a stage doesn't happen (the documents
-        aren't real, the keys aren't handed over), the owner isn't paid for it and KetaPay looks into it.</p>
-      <form method="post" action="/listings/lekki-3-bed/buy">
-        <label for="email">Your email</label>
-        <input id="email" name="email" type="email" required placeholder="you@example.com">
-        <button type="submit">Buy with escrow</button>
-      </form>
-    </section>
-  </main>
-  <script type="module">
-    const naira = (kobo) => `₦${(kobo / 100).toLocaleString('en-NG')}`
-    const l = await (await fetch('/api/listings/lekki-3-bed')).json()
-    document.getElementById('title').textContent = l.title
-    document.getElementById('owner').textContent = `Listed by Keyhaus for ${l.owner}`
-    document.getElementById('price').textContent = naira(l.price)
-    document.getElementById('description').textContent = l.description
-    document.getElementById('stages').replaceChildren(
-      ...l.stages.map((s, i) => {
-        const row = document.createElement('tr')
-        row.innerHTML = '<td></td><td class="muted"></td><td></td>'
-        row.cells[0].textContent = `${i + 1}. ${s.title}`
-        row.cells[1].textContent = s.description
-        row.cells[2].textContent = naira(s.amount)
-        return row
-      }),
-    )
-  </script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Keyhaus</title>
+    <link rel="stylesheet" href="/style.css" />
+    <!-- @ketapay/checkout, for "Pay on this page". It takes no keys: it opens a checkout url the server made. -->
+    <script src="https://js.ketapay.com/v1/checkout.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="bar">
+        <strong>Keyhaus</strong><a href="/admin.html">Agency admin</a>
+      </div>
+    </header>
+    <main class="wrap">
+      <section class="card">
+        <span class="tag">Property</span>
+        <h1 id="title">…</h1>
+        <p class="muted" id="owner"></p>
+        <p class="price" id="price"></p>
+        <p id="description"></p>
+        <h2>
+          You pay it all now. The owner is paid in stages, as each one happens:
+        </h2>
+        <table id="stages"></table>
+        <p class="note">
+          KetaPay holds your money, not Keyhaus and not the owner. If a stage
+          doesn't happen (the documents aren't real, the keys aren't handed
+          over), the owner isn't paid for it and KetaPay looks into it.
+        </p>
+        <form method="post" action="/listings/lekki-3-bed/buy">
+          <label for="email">Your email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            placeholder="you@example.com"
+          />
+          <button type="submit">Buy with escrow</button>
+          <button type="button" class="secondary" data-pay-here>Pay on this page</button>
+        </form>
+      </section>
+    </main>
+    <script type="module">
+      const naira = (kobo) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+      const l = await (await fetch("/api/listings/lekki-3-bed")).json();
+      document.getElementById("title").textContent = l.title;
+      document.getElementById("owner").textContent =
+        `Listed by Keyhaus for ${l.owner}`;
+      document.getElementById("price").textContent = naira(l.price);
+      document.getElementById("description").textContent = l.description;
+      document.getElementById("stages").replaceChildren(
+        ...l.stages.map((s, i) => {
+          const row = document.createElement("tr");
+          row.innerHTML = '<td></td><td class="muted"></td><td></td>';
+          row.cells[0].textContent = `${i + 1}. ${s.title}`;
+          row.cells[1].textContent = s.description;
+          row.cells[2].textContent = naira(s.amount);
+          return row;
+        }),
+      );
+    </script>
+    <script type="module">
+      import { payHere } from './pay-here.js'
+      // "Pay on this page": the same form, with KetaPay's checkout opened over the page (see pay-here.js)
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pay-here]')
+        if (button) payHere(button.form)
+      })
+    </script>
+  </body>
 </html>
