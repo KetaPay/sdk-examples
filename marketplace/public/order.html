@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your order</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Order</h1>
+    <p>Status: <span class="status" id="status">loading…</span></p>
+
+    <!-- Each side proves who they are with a one-time code KetaPay sends them: your platform never
+         moves their money on its own. In test mode the code is always 123456. -->
+    <section id="seller" hidden>
+      <h2>Seller: mark as sent</h2>
+      <p class="muted">We email you a code to confirm it's you.</p>
+      <div class="row"><input id="seller-code" placeholder="Code" inputmode="numeric"><button data-role="seller">Send code</button></div>
+    </section>
+
+    <section id="buyer" hidden>
+      <h2>Buyer: confirm it arrived as described</h2>
+      <p class="muted">This pays the seller. We email you a code to confirm it's you.</p>
+      <div class="row"><input id="buyer-code" placeholder="Code" inputmode="numeric"><button data-role="buyer">Send code</button></div>
+    </section>
+  </main>
+  <script>
+    const id = new URLSearchParams(location.search).get('order')
+    const sessions = {}
+    async function refresh() {
+      const res = await fetch(`/orders/${encodeURIComponent(id)}`)
+      if (!res.ok) return void (document.getElementById('status').textContent = 'not found')
+      const order = await res.json()
+      document.getElementById('status').textContent = order.status.replace('_', ' ')
+      document.getElementById('seller').hidden = order.status !== 'paid'
+      document.getElementById('buyer').hidden = order.status !== 'shipped'
+    }
+    for (const button of document.querySelectorAll('button[data-role]')) {
+      button.onclick = async () => {
+        const role = button.dataset.role
+        const step = sessions[role] ? 'confirm' : 'code'
+        const code = document.getElementById(`${role}-code`).value
+        button.disabled = true
+        const res = await fetch(`/orders/${encodeURIComponent(id)}/${role}/${step}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessions[role], code }),
+        })
+        button.disabled = false
+        const body = await res.json()
+        if (!res.ok) return alert(body.error)
+        if (step === 'code') {
+          sessions[role] = body.session_id
+          button.textContent = 'Confirm'
+        }
+        refresh()
+      }
+    }
+    refresh()
+    setInterval(refresh, 3000)
+  </script>
+</body>
+</html>

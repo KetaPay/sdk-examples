@@ -6,6 +6,9 @@ does the same thing in every language, so you can pick yours and copy what you n
 | Example | What it shows | Node | PHP |
 | --- | --- | --- | --- |
 | [shop-checkout](shop-checkout) | A shop selling its own goods with escrow as a way to pay: checkout, webhooks, marking an order shipped | ✓ | ✓ |
+| [marketplace](marketplace) | Customers buying from and selling to each other, with your commission; each side confirms its step with a one-time code | ✓ | ✓ |
+| [freelance-milestones](freelance-milestones) | A project paid in stages: the freelancer delivers each stage with a file, the client accepts it | ✓ | ✓ |
+| [webhooks](webhooks) | Receiving webhooks properly: verify, handle once, catch up after downtime, rotate the secret | ✓ | ✓ |
 
 Every example runs in test mode with an `sk_test_` key: no real money moves and every one-time code is
 `123456`. Get a key from the KetaPay dashboard under **Developers → API keys**.

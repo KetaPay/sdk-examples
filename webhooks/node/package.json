@@ -1,0 +1,17 @@
+{
+  "name": "ketapay-example-webhooks-node",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setup.js",
+    "send-test": "node send-test.js",
+    "catch-up": "node catch-up.js",
+    "rotate": "node rotate.js"
+  },
+  "dependencies": {
+    "@ketapay/node": "^0.1.0-beta.1",
+    "express": "^5.1.0"
+  }
+}
