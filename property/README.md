@@ -30,9 +30,9 @@ KetaPay fetches each document once and records its fingerprint, so a document ch
 The owner and the buyer approve their own steps with a one-time code. Keyhaus's key alone can't move
 the money. An owner new to KetaPay has large payouts held until they verify their identity with KetaPay.
 
-> **Known issue (KetaPay API):** the commission cap is applied to each stage instead of to the whole sale,
-> so this sale takes ₦1,212,500 instead of the ₦500,000 the checkout quotes. Scenario 2 fails until it's
-> fixed.
+> **Known issue (KetaPay API, being fixed in KetaPay/api#254):** the commission cap is applied to each stage
+> instead of to the whole sale, so this sale takes ₦1,212,500 instead of the ₦500,000 the checkout quotes.
+> Scenario 2 fails until the fix is live, and passes against it.
 
 ## What's in it
 
@@ -75,7 +75,7 @@ cd ../tools && npm install && npm run scenarios -- property node   # or php
 ```
 
 1. Deposit, documents and keys are each handed over then accepted, and the sale completes.
-2. The agency's commission stops at its ₦500,000 cap for the whole sale. (Fails today: see the known issue.)
+2. The agency's commission stops at its ₦500,000 cap for the whole sale. (Fails until api#254 is live.)
 3. The buyer can't pay the owner for a stage that hasn't been handed over.
 4. The documents stage can't be handed over before the deposit stage is paid.
 5. A webhook not signed by KetaPay is refused and changes nothing.
