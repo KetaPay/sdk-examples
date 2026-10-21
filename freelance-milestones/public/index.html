@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gigline</title>
   <link rel="stylesheet" href="/style.css">
+  <!-- @ketapay/checkout, for "Pay on this page". It takes no keys: it opens a checkout url the server made. -->
+  <script src="https://js.ketapay.com/v1/checkout.js"></script>
 </head>
 <body>
   <header><div class="bar"><strong>Gigline</strong><span class="muted">Hire freelancers, pay by the stage</span></div></header>
@@ -25,8 +27,17 @@
         <label for="freelancer">Freelancer's email</label>
         <input id="freelancer" name="freelancer" type="email" required placeholder="freelancer@example.com">
         <button type="submit">Fund the project: ₦2,000,000</button>
+        <button type="button" class="secondary" data-pay-here>Pay on this page</button>
       </form>
     </section>
   </main>
+  <script type="module">
+    import { payHere } from './pay-here.js'
+    // "Pay on this page": the same form, with KetaPay's checkout opened over the page (see pay-here.js)
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-pay-here]')
+      if (button) payHere(button.form)
+    })
+  </script>
 </body>
 </html>

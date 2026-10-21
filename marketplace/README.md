@@ -36,7 +36,8 @@ the same email and verify, then pays it to their bank.
 ## What's in it
 
 ```
-public/index.html    listings by three different sellers, "Buy with escrow"
+public/index.html    listings by three different sellers, "Buy with escrow" or "Pay on this page"
+public/pay-here.js   "Pay on this page": the same checkout opened over the page with @ketapay/checkout
 public/order.html    the buyer's purchase: confirm arrival with a code, and the "what's happening" panel
 public/seller.html   the seller's sale: mark it sent with a code, and the panel
 public/admin.html    Swapmart's admin: every sale, its commission, links to each side's view
@@ -48,7 +49,7 @@ scenarios/           what must hold, run against either server
 | Route | What happens |
 | --- | --- |
 | `GET /api/listings` | The listings. Prices and sellers live on the server. |
-| `POST /listings/{id}/buy` | A checkout session with the buyer, the listing's seller and `commission`, then a redirect to KetaPay's checkout page |
+| `POST /listings/{id}/buy` | A checkout session with the buyer, the listing's seller and `commission`, then a redirect to KetaPay's checkout page. A JSON post gets `{ url, return_url }` back instead, for "Pay on this page" |
 | `POST /orders/{id}/{seller\|buyer}/code` | KetaPay emails that customer a one-time code |
 | `POST /orders/{id}/seller/confirm` | The seller's code checks out: the milestone is delivered with their token |
 | `POST /orders/{id}/buyer/confirm` | The buyer's code checks out: the milestone is released with their token, which pays the seller |
@@ -77,3 +78,4 @@ cd ../tools && npm install && npm run scenarios -- marketplace node   # or php
 3. The buyer can't confirm before the seller has sent it.
 4. Swapmart's key alone can't move a customer's money: delivering needs the seller's token.
 5. A webhook not signed by KetaPay is refused and changes nothing.
+6. A JSON purchase gets the checkout `url` back, for "Pay on this page" to open over the page.

@@ -34,7 +34,7 @@ const app = express()
 app.use(express.static(fileURLToPath(new URL('../public', import.meta.url))))
 
 // Step 1: the client funds the project
-app.post('/projects', express.urlencoded({ extended: false }), async (req, res) => {
+app.post('/projects', express.urlencoded({ extended: false }), express.json(), async (req, res) => {
   const project = { id: randomUUID(), status: 'awaiting_payment', escrow_id: null, webhooks: [] }
   const session = await ketapay.checkoutSessions.create({
     amount: 200_000_000, // kobo: ₦2,000,000, the sum of the stages
@@ -52,6 +52,8 @@ app.post('/projects', express.urlencoded({ extended: false }), async (req, res) 
     return_url: `${BASE_URL}/client.html?project=${project.id}`,
   })
   projects.set(project.id, { ...project, client: req.body.client, freelancer: req.body.freelancer })
+  // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+  if (req.is('json')) return res.json({ url: session.url, return_url: session.return_url })
   res.redirect(303, session.url)
 })
 

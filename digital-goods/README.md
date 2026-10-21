@@ -29,7 +29,8 @@ answered, and the same event can arrive again.
 ## What's in it
 
 ```
-public/index.html    the store: an e-book and a course, "Pay with escrow"
+public/index.html    the store: an e-book and a course, "Pay with escrow" or "Pay on this page"
+public/pay-here.js   "Pay on this page": the same checkout opened over the page with @ketapay/checkout
 public/order.html    the buyer's order: the download, "Does it work?", the "what's happening" panel
 node/server.js       the server in Node (Express), using @ketapay/node from npm
 php/index.php        the same server in PHP, using ketapay/ketapay-php from Packagist
@@ -38,7 +39,7 @@ scenarios/           what must hold, run against either server
 
 | Route | What happens |
 | --- | --- |
-| `POST /checkout` | A checkout session with `category: digital` and no `seller`, then a redirect to pay |
+| `POST /checkout` | A checkout session with `category: digital` and no `seller`, then a redirect to pay. A JSON post gets `{ url, return_url }` back instead, for "Pay on this page" |
 | `POST /webhooks` | `escrow.funded`: delivers the milestone with the key alone, once, however often it arrives. `escrow.completed` and `escrow.refunded` update the order |
 | `GET /orders/{id}/download` | The file, only once delivered and never after a refund |
 | `POST /orders/{id}/buyer/code`, `/confirm` | The buyer confirms it works with a one-time code: the milestone is released with their token |
@@ -66,3 +67,4 @@ cd ../tools && npm install && npm run scenarios -- digital-goods node   # or php
 3. A refund turns the download off.
 4. A forged `escrow.funded` delivers nothing and unlocks no download.
 5. A wrong code when confirming is refused and the store is not paid.
+6. A JSON checkout gets the checkout `url` back, for "Pay on this page" to open over the page.

@@ -6,7 +6,7 @@ and when it releases, what each side sees), then shows the code for each step.
 
 | Example | Kind of sale | What it shows |
 | --- | --- | --- |
-| [shop-checkout](shop-checkout) | Goods the business sells itself | No `seller` (the shop is paid), a shop admin that ships orders with its key alone |
+| [shop-checkout](shop-checkout) | Goods the business sells itself | No `seller` (the shop is paid), a shop admin that ships orders with its key alone; also in React with `@ketapay/react` |
 | [marketplace](marketplace) | Goods between customers | Buyer and seller each approve their step with a one-time code; the platform's commission |
 | [freelance-milestones](freelance-milestones) | Services in stages | Three milestones, delivery with a file, the client accepting stage by stage |
 | [property](property) | Property | A large sale: deposit, documents and keys as milestones, title documents attached, a capped commission |
@@ -22,12 +22,19 @@ milestones, timeline) and the webhooks your server received, updating as you cli
 <example>/
   README.md        the business, how the money moves, the routes, how to run it
   .env.example     copy to .env and add your sk_test_ key
-  public/          the pages (buyer, seller, admin) and the panel, shared by both versions
+  public/          the pages (buyer, seller, admin), the panel and pay-here.js, shared by both versions
   node/server.js   the whole server in one file, step by step, using @ketapay/node from npm
   php/index.php    the same server in PHP, using ketapay/ketapay-php from Packagist
   scenarios/       what must hold, run over HTTP against either version
-tools/             the scenario runner, and shared/ (the panel and styles copied into each public/)
+  react/           (shop-checkout) the pages in React, with the checkout opened over the page
+tools/             the scenario runner, and shared/ (the panel, styles and pay-here.js copied into each public/)
 ```
+
+Every checkout page has two buttons: one sends the buyer to KetaPay's checkout page, and **Pay on this
+page** opens the same checkout over your page with `@ketapay/checkout` (`public/pay-here.js`). Either way
+the server creates the checkout with its secret key and learns about the payment from the webhook; the
+browser only opens the `url` it gets back. [shop-checkout](shop-checkout) also has a React version with
+`@ketapay/react`.
 
 Each server is deliberately one file you can read top to bottom. Your own app will split it into
 routes, services and a database; here, every KetaPay call is in plain sight in the order it happens.
@@ -51,11 +58,12 @@ npm run scenarios -- marketplace php    # the same scenarios against the PHP ser
 ```
 
 The runner pays with KetaPay's sandbox helper and signs webhooks with your `KETAPAY_WEBHOOK_SECRET`, so
-no tunnel is needed. Changed something in `tools/shared/`? Run `npm run sync` to copy it into every example.
+no tunnel is needed. Changed something in `tools/shared/` (the panel, styles or `pay-here.js`)? Run `npm run sync` to copy it into every example.
 
 ## Learn more
 
 - Docs: [docs.ketapay.com](https://docs.ketapay.com)
-- SDKs: [ketapay-node](https://github.com/KetaPay/ketapay-node), [ketapay-php](https://github.com/KetaPay/ketapay-php)
+- Server SDKs: [ketapay-node](https://github.com/KetaPay/ketapay-node), [ketapay-php](https://github.com/KetaPay/ketapay-php)
+- Browser SDKs: [ketapay-js](https://github.com/KetaPay/ketapay-js) (`@ketapay/checkout`), [ketapay-react](https://github.com/KetaPay/ketapay-react) (`@ketapay/react`)
 
 Never commit a secret key. Keys belong on your server, never in a browser or an app.

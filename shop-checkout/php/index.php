@@ -3,7 +3,7 @@
 // Ade Gadgets: a shop selling its own goods, with KetaPay escrow as a way to pay. The same routes as ../node:
 //
 // 1. POST /checkout            a checkout session with no `seller`: the shop itself is the seller
-// 2. KetaPay's checkout page   the buyer pays; KetaPay holds the money
+// 2. KetaPay's checkout        the buyer pays, on KetaPay's page or over the shop's ("Pay on this page", ../react); KetaPay holds the money
 // 3. POST /webhooks            escrow.funded marks the order paid; escrow.completed marks it done
 // 4. POST /orders/{id}/ship    the shop marks it delivered with its key alone (it is the seller)
 // 5. The buyer confirms delivery with KetaPay, and the shop is paid into its KetaPay balance
@@ -79,13 +79,15 @@ if ($method === 'GET' && $path === '/api/products') {
 
 // Step 1: the buyer clicked "Pay with escrow"
 if ($method === 'POST' && $path === '/checkout') {
-    $product = PRODUCTS[$_POST['product'] ?? ''] ?? null;
+    $isJson = str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json');
+    $form = $isJson ? (array) json_decode((string) file_get_contents('php://input'), true) : $_POST;
+    $product = PRODUCTS[$form['product'] ?? ''] ?? null;
     if ($product === null) {
         http_response_code(404);
 
         return;
     }
-    $email = (string) ($_POST['email'] ?? '');
+    $email = (string) ($form['email'] ?? '');
     $order = ['id' => bin2hex(random_bytes(16)), 'product' => $product['name'], 'buyer' => $email, 'status' => 'awaiting_payment', 'escrow_id' => null, 'webhooks' => []];
     $session = $ketapay->checkoutSessions->create([
         'amount' => $product['price'], // kobo
@@ -98,6 +100,12 @@ if ($method === 'POST' && $path === '/checkout') {
         'return_url' => "$baseUrl/order.html?order={$order['id']}",
     ]);
     $save($order);
+    if ($isJson) {
+        // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+        $json(['url' => $session->url, 'return_url' => $session->return_url]);
+
+        return;
+    }
     header('Location: ' . $session->url, true, 303);
 
     return;

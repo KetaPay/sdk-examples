@@ -83,6 +83,8 @@ if ($method === 'GET' && $file !== false && str_starts_with($file, realpath(__DI
 try {
     // Step 1: the client funds the project
     if ($method === 'POST' && $path === '/projects') {
+        $isJson = str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json');
+        $form = $isJson ? $input() : $_POST;
         $project = ['id' => bin2hex(random_bytes(16)), 'status' => 'awaiting_payment', 'escrow_id' => null, 'webhooks' => []];
         $session = $ketapay->checkoutSessions->create([
             'amount' => 200_000_000, // kobo: ₦2,000,000, the sum of the stages
@@ -94,12 +96,18 @@ try {
                 ['title' => 'Build', 'description' => 'All five pages built and responsive', 'amount' => 110_000_000],
                 ['title' => 'Launch', 'description' => 'Live on the client domain with analytics', 'amount' => 50_000_000],
             ],
-            'buyer' => ['email' => (string) ($_POST['client'] ?? '')],
-            'seller' => ['email' => (string) ($_POST['freelancer'] ?? '')],
+            'buyer' => ['email' => (string) ($form['client'] ?? '')],
+            'seller' => ['email' => (string) ($form['freelancer'] ?? '')],
             'external_reference' => $project['id'],
             'return_url' => "$baseUrl/client.html?project={$project['id']}",
         ]);
-        $save($project + ['client' => (string) $_POST['client'], 'freelancer' => (string) $_POST['freelancer']]);
+        $save($project + ['client' => (string) $form['client'], 'freelancer' => (string) $form['freelancer']]);
+        if ($isJson) {
+            // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+            $json(['url' => $session->url, 'return_url' => $session->return_url]);
+
+            return;
+        }
         header('Location: ' . $session->url, true, 303);
 
         return;

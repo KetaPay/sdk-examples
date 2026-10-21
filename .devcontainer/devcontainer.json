@@ -5,8 +5,11 @@
     "ghcr.io/devcontainers/features/node:1": { "version": "20" },
     "ghcr.io/devcontainers/features/php:1": { "version": "8.3", "installComposer": true }
   },
-  "forwardPorts": [4242],
-  "portsAttributes": { "4242": { "label": "Example shop", "onAutoForward": "openPreview" } },
+  "forwardPorts": [4242, 5173],
+  "portsAttributes": {
+    "4242": { "label": "Example shop", "onAutoForward": "openPreview" },
+    "5173": { "label": "Example shop (React)" }
+  },
   "secrets": {
     "KETAPAY_SECRET_KEY": { "description": "Your sk_test_ key from the KetaPay dashboard (Developers → API keys)" }
   }

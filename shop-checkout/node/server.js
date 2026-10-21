@@ -1,7 +1,7 @@
 // Ade Gadgets: a shop selling its own goods, with KetaPay escrow as a way to pay.
 //
 // 1. POST /checkout            a checkout session with no `seller`: the shop itself is the seller
-// 2. KetaPay's checkout page   the buyer pays; KetaPay holds the money
+// 2. KetaPay's checkout        the buyer pays, on KetaPay's page or over the shop's ("Pay on this page", ../react); KetaPay holds the money
 // 3. POST /webhooks            escrow.funded marks the order paid; escrow.completed marks it done
 // 4. POST /orders/:id/ship     the shop marks it delivered with its key alone (it is the seller)
 // 5. The buyer confirms delivery with KetaPay, and the shop is paid into its KetaPay balance
@@ -41,7 +41,7 @@ app.use(express.static(fileURLToPath(new URL('../public', import.meta.url))))
 app.get('/api/products', (_req, res) => res.json(Object.entries(PRODUCTS).map(([id, p]) => ({ id, name: p.name, price: p.price }))))
 
 // Step 1: the buyer clicked "Pay with escrow"
-app.post('/checkout', express.urlencoded({ extended: false }), async (req, res) => {
+app.post('/checkout', express.urlencoded({ extended: false }), express.json(), async (req, res) => {
   const product = PRODUCTS[req.body.product]
   if (!product) return res.sendStatus(404)
   const order = { id: randomUUID(), product: product.name, buyer: req.body.email, status: 'awaiting_payment', escrow_id: null, webhooks: [] }
@@ -56,6 +56,8 @@ app.post('/checkout', express.urlencoded({ extended: false }), async (req, res) 
     return_url: `${BASE_URL}/order.html?order=${order.id}`,
   })
   orders.set(order.id, order)
+  // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+  if (req.is('json')) return res.json({ url: session.url, return_url: session.return_url })
   res.redirect(303, session.url)
 })
 

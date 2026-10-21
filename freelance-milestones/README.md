@@ -30,7 +30,8 @@ disputes what was delivered.
 ## What's in it
 
 ```
-public/index.html        the project: three stages, client and freelancer emails, "Fund the project"
+public/index.html        the project: three stages, client and freelancer emails, "Fund the project" or "Pay on this page"
+public/pay-here.js       "Pay on this page": the same checkout opened over the page with @ketapay/checkout
 public/client.html       the client's view: stages, accept the delivered one, the "what's happening" panel
 public/freelancer.html   the freelancer's view: deliver the current stage with a note and a file, the panel
 node/server.js           the server in Node (Express), using @ketapay/node from npm
@@ -40,7 +41,7 @@ scenarios/               what must hold, run against either server
 
 | Route | What happens |
 | --- | --- |
-| `POST /projects` | A checkout session with three `milestones` adding up to `amount`, then a redirect to pay |
+| `POST /projects` | A checkout session with three `milestones` adding up to `amount`, then a redirect to pay. A JSON post gets `{ url, return_url }` back instead, for "Pay on this page" |
 | `POST /projects/{id}/{freelancer\|client}/code` | KetaPay emails that person a one-time code |
 | `POST /projects/{id}/freelancer/deliver` | With the freelancer's code: delivers the current stage, with a note and an optional file link |
 | `POST /projects/{id}/client/release` | With the client's code: accepts the current stage and pays the freelancer for it |
@@ -71,3 +72,4 @@ cd ../tools && npm install && npm run scenarios -- freelance-milestones node   #
 3. The client can't accept a stage the freelancer hasn't delivered.
 4. A wrong one-time code is refused and the stage stays as it was.
 5. A delivered PDF is recorded on the milestone; a web page instead of a file is refused.
+6. A JSON project gets the checkout `url` back, for "Pay on this page" to open over the page.

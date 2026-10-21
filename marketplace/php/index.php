@@ -97,13 +97,15 @@ try {
 
     // Step 1: the buyer clicked "Buy with escrow"
     if ($method === 'POST' && preg_match('#^/listings/([^/]+)/buy$#', $path, $m)) {
+        $isJson = str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json');
+        $form = $isJson ? $input() : $_POST;
         $listing = LISTINGS[$m[1]] ?? null;
         if ($listing === null) {
             http_response_code(404);
 
             return;
         }
-        $email = (string) ($_POST['email'] ?? '');
+        $email = (string) ($form['email'] ?? '');
         $order = ['id' => bin2hex(random_bytes(16)), 'title' => $listing['title'], 'status' => 'awaiting_payment', 'escrow_id' => null, 'webhooks' => []];
         $session = $ketapay->checkoutSessions->create([
             'amount' => $listing['price'],
@@ -118,6 +120,12 @@ try {
             'return_url' => "$baseUrl/order.html?order={$order['id']}",
         ]);
         $save($order + ['buyer' => $email, 'seller' => $listing['seller']['email'], 'commission' => $session->fees->commission]);
+        if ($isJson) {
+            // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+            $json(['url' => $session->url, 'return_url' => $session->return_url]);
+
+            return;
+        }
         header('Location: ' . $session->url, true, 303);
 
         return;

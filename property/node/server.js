@@ -67,7 +67,7 @@ function plan(listing) {
 }
 
 // Step 1: the buyer clicked "Buy with escrow"
-app.post('/listings/:id/buy', express.urlencoded({ extended: false }), async (req, res) => {
+app.post('/listings/:id/buy', express.urlencoded({ extended: false }), express.json(), async (req, res) => {
   const listing = LISTINGS[req.params.id]
   if (!listing) return res.sendStatus(404)
   const sale = { id: randomUUID(), title: listing.title, status: 'awaiting_payment', escrow_id: null, webhooks: [] }
@@ -86,6 +86,8 @@ app.post('/listings/:id/buy', express.urlencoded({ extended: false }), async (re
     return_url: `${BASE_URL}/buyer.html?sale=${sale.id}`,
   })
   sales.set(sale.id, { ...sale, buyer: req.body.email, owner: listing.owner.email, commission: session.fees.commission })
+  // A JSON post ("Pay on this page", @ketapay/checkout) gets the url back to open over the page
+  if (req.is('json')) return res.json({ url: session.url, return_url: session.return_url })
   res.redirect(303, session.url)
 })
 
