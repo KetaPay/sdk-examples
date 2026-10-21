@@ -1,13 +1,14 @@
-// A marketplace: your customers buy from and sell to each other, KetaPay holds the money, and you
-// take a commission on each sale.
+// Swapmart: a marketplace where customers buy from and sell to each other. KetaPay holds the money,
+// and Swapmart takes a commission on each sale.
 //
-// 1. POST /listings/:id/buy               checkout session with the buyer, the seller and your commission
-// 2. KetaPay's page                       the buyer pays; the money is held by KetaPay
-// 3. POST /orders/:id/seller/code|confirm the seller proves it's them with a one-time code, then marks it sent
-// 4. POST /orders/:id/buyer/code|confirm  the buyer proves it's them, then confirms it arrived: the seller is paid
-// 5. POST /webhooks                       keeps the order in step with KetaPay, whatever happens elsewhere
+// 1. POST /listings/:id/buy                checkout session with the buyer, the listing's seller and the commission
+// 2. KetaPay's checkout page               the buyer pays; KetaPay holds the money
+// 3. POST /orders/:id/seller/code|confirm  the seller proves it's them with a one-time code, then marks it sent
+// 4. POST /orders/:id/buyer/code|confirm   the buyer proves it's them, then confirms it arrived: the seller is paid
+// 5. POST /webhooks                        keeps the order in step with KetaPay, whatever happens elsewhere
 //
-// Your key alone never moves your customers' money: each step that does needs that customer's token.
+// Swapmart's key alone never moves its customers' money: each step that does needs that customer's token.
+// The pages in ../public: listings (/), the buyer's order, the seller's sale, and the platform admin.
 import express from 'express'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
@@ -32,8 +33,20 @@ const LISTINGS = {
   'iphone-15': {
     title: 'iPhone 15 Pro Max, 256GB',
     description: 'Used, 91% battery, no scratches, Face ID works. Box and cable included.',
-    amount: 45_000_000, // kobo: ₦450,000
+    price: 45_000_000, // kobo: ₦450,000
     seller: { email: 'tunde@example.com', name: 'Tunde Bello' },
+  },
+  'ps5': {
+    title: 'PlayStation 5, disc edition',
+    description: 'Bought 2024, two controllers, all cables, works perfectly. Original box.',
+    price: 52_000_000,
+    seller: { email: 'chioma@example.com', name: 'Chioma Eze' },
+  },
+  'bicycle': {
+    title: 'Road bike, 54cm frame',
+    description: 'Aluminium frame, Shimano gears, new tyres, serviced last month. Pickup in Yaba.',
+    price: 18_000_000,
+    seller: { email: 'musa@example.com', name: 'Musa Bello' },
   },
 }
 const orders = new Map()
@@ -41,25 +54,28 @@ const orders = new Map()
 const app = express()
 app.use(express.static(fileURLToPath(new URL('../public', import.meta.url))))
 
+app.get('/api/listings', (_req, res) =>
+  res.json(Object.entries(LISTINGS).map(([id, l]) => ({ id, title: l.title, price: l.price, seller: l.seller.name }))),
+)
+
 // Step 1: the buyer clicked "Buy with escrow"
 app.post('/listings/:id/buy', express.urlencoded({ extended: false }), async (req, res) => {
   const listing = LISTINGS[req.params.id]
   if (!listing) return res.sendStatus(404)
-  const order = { id: randomUUID(), status: 'awaiting_payment', escrow_id: null }
-  const buyer = { email: req.body.email }
+  const order = { id: randomUUID(), title: listing.title, status: 'awaiting_payment', escrow_id: null, webhooks: [] }
   const session = await ketapay.checkoutSessions.create({
-    amount: listing.amount,
+    amount: listing.price,
     category: 'goods',
     title: listing.title,
     description: listing.description,
-    buyer,
+    buyer: { email: req.body.email },
     seller: listing.seller,
-    // Your cut, taken from the seller's side when the money is released
+    // Swapmart's cut, taken from the seller's side when the money is released
     commission: { rate_bps: COMMISSION_BPS },
     external_reference: order.id,
     return_url: `${BASE_URL}/order.html?order=${order.id}`,
   })
-  orders.set(order.id, { ...order, buyer: buyer.email, seller: listing.seller.email })
+  orders.set(order.id, { ...order, buyer: req.body.email, seller: listing.seller.email, commission: session.fees.commission })
   res.redirect(303, session.url)
 })
 
@@ -71,10 +87,10 @@ app.post('/orders/:id/:role/code', express.json(), async (req, res) => {
   res.json({ session_id: session.id })
 })
 
-// Second half: the code proves it's them, and their token lets you act for them, this once
+// Second half: the code proves it's them, and their token lets Swapmart act for them, this once
 app.post('/orders/:id/:role/confirm', express.json(), async (req, res) => {
   const { order, role } = party(req)
-  if (!order) return res.sendStatus(404)
+  if (!order?.escrow_id) return res.sendStatus(404)
   const { token } = await ketapay.customerSessions.verify(req.body.session_id, req.body.code)
   const escrow = await ketapay.escrows.retrieve(order.escrow_id)
   const milestone = escrow.milestones[0]
@@ -85,7 +101,7 @@ app.post('/orders/:id/:role/confirm', express.json(), async (req, res) => {
     await ketapay.escrows.milestones.release(escrow.id, milestone.id, {}, { customerToken: token })
     order.status = 'completed'
   }
-  res.json(order)
+  res.json(summary(order))
 })
 
 function party(req) {
@@ -94,7 +110,7 @@ function party(req) {
   return { order, role, email: order?.[role] }
 }
 
-// Step 5: KetaPay tells you what happened. Read the raw body: the signature covers it exactly.
+// Step 5: KetaPay tells Swapmart what happened. Read the raw body: the signature covers it exactly.
 app.post('/webhooks', express.raw({ type: 'application/json' }), async (req, res) => {
   let event
   try {
@@ -106,6 +122,7 @@ app.post('/webhooks', express.raw({ type: 'application/json' }), async (req, res
   const escrow = event.data.object
   const order = orders.get(escrow.external_reference)
   if (order) {
+    order.webhooks.push({ type: event.type, received_at: new Date().toISOString() })
     if (event.type === 'escrow.funded') Object.assign(order, { status: 'paid', escrow_id: escrow.id })
     if (event.type === 'milestone.delivered') order.status = 'shipped'
     if (event.type === 'escrow.completed') order.status = 'completed'
@@ -115,10 +132,26 @@ app.post('/webhooks', express.raw({ type: 'application/json' }), async (req, res
   res.sendStatus(200)
 })
 
+// The platform admin's list, newest first, with the commission each sale earns
+app.get('/orders', (_req, res) => res.json([...orders.values()].reverse().map(summary)))
+
 app.get('/orders/:id', (req, res) => {
   const order = orders.get(req.params.id)
-  order ? res.json({ id: order.id, status: order.status }) : res.sendStatus(404)
+  order ? res.json(summary(order)) : res.sendStatus(404)
 })
+
+// The "what's happening" panel: the escrow as KetaPay has it, and the webhooks Swapmart received
+app.get('/orders/:id/activity', async (req, res) => {
+  const order = orders.get(req.params.id)
+  if (!order) return res.sendStatus(404)
+  const escrow = order.escrow_id ? await ketapay.escrows.retrieve(order.escrow_id) : null
+  res.json({ escrow, webhooks: order.webhooks })
+})
+
+function summary(order) {
+  const { id, title, buyer, seller, status, commission } = order
+  return { id, title, buyer, seller, status, commission }
+}
 
 // A wrong code or a step out of order comes back as a KetaPay error with a message to show
 app.use((err, _req, res, _next) => {
@@ -127,4 +160,4 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Something went wrong' })
 })
 
-app.listen(4242, () => console.log(`Marketplace running on ${BASE_URL}`))
+app.listen(4242, () => console.log(`Swapmart running on ${BASE_URL}`))

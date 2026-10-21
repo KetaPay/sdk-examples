@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your download · Pagebound</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div class="bar"><strong>Pagebound</strong><a href="/">Store</a></div></header>
+  <main class="wrap split">
+    <section class="card">
+      <h1 id="product">Your order</h1>
+      <p>Status: <span class="status" id="status">loading…</span></p>
+      <p class="muted" id="hint"></p>
+      <a class="button" id="download" hidden>Download</a>
+      <div id="confirm" hidden>
+        <h2>Does it work?</h2>
+        <p class="muted">Confirming pays Pagebound. If the file doesn't open or isn't what we described, don't confirm:
+          report it to KetaPay instead. KetaPay emails you a code to make sure it's you.</p>
+        <div class="row"><input id="code" placeholder="Code" inputmode="numeric"><button id="go"></button></div>
+      </div>
+    </section>
+    <aside class="card" id="activity"></aside>
+  </main>
+  <script type="module">
+    import { showActivity } from './activity.js'
+    import { codeStep } from './code-step.js'
+    const id = encodeURIComponent(new URLSearchParams(location.search).get('order'))
+    const hints = {
+      awaiting_payment: 'Waiting for KetaPay to confirm your payment. Your download appears here as soon as it does.',
+      delivering: 'Paid. Getting your download ready…',
+      delivered: 'Paid, and your download is ready. KetaPay holds your money until you confirm it works.',
+      completed: 'Done. You confirmed it works and Pagebound has been paid. Your download stays here.',
+      refunded: 'Refunded to you. The download is no longer available.',
+    }
+    document.getElementById('download').href = `/orders/${id}/download`
+    async function refresh() {
+      const res = await fetch(`/orders/${id}`)
+      if (!res.ok) return void (document.getElementById('status').textContent = 'not found')
+      const order = await res.json()
+      document.getElementById('product').textContent = order.product
+      document.getElementById('status').textContent = order.status.replace('_', ' ')
+      document.getElementById('hint').textContent = hints[order.status] ?? ''
+      document.getElementById('download').hidden = !['delivered', 'completed'].includes(order.status)
+      document.getElementById('confirm').hidden = order.status !== 'delivered'
+      showActivity(document.getElementById('activity'), `/orders/${id}/activity`)
+    }
+    codeStep({
+      button: document.getElementById('go'),
+      input: document.getElementById('code'),
+      codeUrl: `/orders/${id}/buyer/code`,
+      confirmUrl: `/orders/${id}/buyer/confirm`,
+      done: refresh,
+    })
+    refresh()
+    setInterval(refresh, 4000)
+  </script>
+</body>
+</html>

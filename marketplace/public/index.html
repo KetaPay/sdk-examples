@@ -7,17 +7,32 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main class="card">
-    <p class="muted">Listing by Tunde Bello</p>
-    <h1>iPhone 15 Pro Max, 256GB</h1>
-    <p class="muted">Used, 91% battery, no scratches, Face ID works. Box and cable included.</p>
-    <p class="price">₦450,000</p>
-    <form method="post" action="/listings/iphone-15/buy">
-      <label for="email">Your email</label>
-      <input id="email" name="email" type="email" required placeholder="you@example.com">
-      <button type="submit">Buy with escrow</button>
-    </form>
-    <p class="muted">Your money is held by KetaPay and only reaches the seller when you confirm the phone is as described.</p>
+  <header><div class="bar"><strong>Swapmart</strong><a href="/admin.html">Platform admin</a></div></header>
+  <main class="wrap">
+    <section class="card">
+      <h1>Buy from people near you, safely</h1>
+      <p class="muted">Pay with escrow: KetaPay holds your money and only pays the seller when you confirm the item is as
+        described. Swapmart never holds it.</p>
+    </section>
+    <section class="grid" id="listings"></section>
   </main>
+  <script type="module">
+    const naira = (kobo) => `₦${(kobo / 100).toLocaleString('en-NG')}`
+    const listings = await (await fetch('/api/listings')).json()
+    document.getElementById('listings').replaceChildren(
+      ...listings.map((l) => {
+        const card = document.createElement('form')
+        card.className = 'card'
+        card.method = 'post'
+        card.action = `/listings/${encodeURIComponent(l.id)}/buy`
+        card.innerHTML = `<p class="muted"></p><h2></h2><p class="price"></p><label>Your email</label>
+          <input name="email" type="email" required placeholder="you@example.com"><button type="submit">Buy with escrow</button>`
+        card.querySelector('.muted').textContent = `Sold by ${l.seller}`
+        card.querySelector('h2').textContent = l.title
+        card.querySelector('.price').textContent = naira(l.price)
+        return card
+      }),
+    )
+  </script>
 </body>
 </html>

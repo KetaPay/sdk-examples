@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pagebound</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div class="bar"><strong>Pagebound</strong><span class="muted">E-books and courses</span></div></header>
+  <main class="wrap">
+    <section class="card">
+      <h1>Download now, pay safely</h1>
+      <p class="muted">Pay with escrow: your download is ready the moment you pay, and KetaPay holds your money until you
+        confirm it opens and is what we described. If it isn't, KetaPay steps in.</p>
+    </section>
+    <section class="grid" id="products"></section>
+  </main>
+  <script type="module">
+    const naira = (kobo) => `₦${(kobo / 100).toLocaleString('en-NG')}`
+    const products = await (await fetch('/api/products')).json()
+    document.getElementById('products').replaceChildren(
+      ...products.map((p) => {
+        const card = document.createElement('form')
+        card.className = 'card'
+        card.method = 'post'
+        card.action = '/checkout'
+        card.innerHTML = `<span class="tag">Digital</span><h2></h2><p class="price"></p>
+          <input type="hidden" name="product"><label>Your email</label>
+          <input name="email" type="email" required placeholder="you@example.com">
+          <button type="submit">Pay with escrow</button>`
+        card.querySelector('h2').textContent = p.name
+        card.querySelector('.price').textContent = naira(p.price)
+        card.querySelector('[name=product]').value = p.id
+        return card
+      }),
+    )
+  </script>
+</body>
+</html>

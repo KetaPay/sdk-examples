@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agency admin · Keyhaus</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div class="bar"><strong>Keyhaus · agency admin</strong><a href="/">Listing</a></div></header>
+  <main class="wrap split">
+    <section class="card">
+      <h1>Sales</h1>
+      <p class="muted">Keyhaus sees every sale but can't move the money: the owner and the buyer approve their own steps.
+        Your commission (2.5%, at most ₦500,000 a sale) reaches your KetaPay balance stage by stage.</p>
+      <table><thead><tr><th>Property</th><th>Status</th><th>Commission</th><th>Open as</th></tr></thead><tbody id="sales"></tbody></table>
+    </section>
+    <aside class="card" id="activity"><h2>What's happening</h2><p class="muted">Pick a sale to see it on KetaPay.</p></aside>
+  </main>
+  <script type="module">
+    import { showActivity } from './activity.js'
+    const naira = (kobo) => `₦${(kobo / 100).toLocaleString('en-NG')}`
+    let selected = null
+    async function refresh() {
+      const sales = await (await fetch('/sales')).json()
+      document.getElementById('sales').replaceChildren(
+        ...sales.map((s) => {
+          const row = document.createElement('tr')
+          row.innerHTML = '<td></td><td class="status"></td><td></td><td><a>buyer</a> · <a>owner</a></td>'
+          row.cells[0].textContent = s.title
+          row.cells[1].textContent = s.status.replace('_', ' ')
+          row.cells[2].textContent = naira(s.commission)
+          const [buyer, owner] = row.cells[3].querySelectorAll('a')
+          buyer.href = `/buyer.html?sale=${s.id}`
+          owner.href = `/owner.html?sale=${s.id}`
+          row.onclick = () => ((selected = s.id), refresh())
+          return row
+        }),
+      )
+      if (selected) showActivity(document.getElementById('activity'), `/sales/${selected}/activity`)
+    }
+    refresh()
+    setInterval(refresh, 4000)
+  </script>
+</body>
+</html>

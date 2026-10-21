@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your project · Gigline</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div class="bar"><strong>Gigline · client</strong><a id="other">Freelancer's view</a></div></header>
+  <main class="wrap split">
+    <section class="card">
+      <h1>Company website</h1>
+      <p>Project: <span class="status" id="status">loading…</span></p>
+      <ul class="steps" id="stages"></ul>
+      <div id="accept" hidden>
+        <h2>Accept <span class="current"></span></h2>
+        <p class="note" id="delivery"></p>
+        <p class="muted">Accepting pays the freelancer for this stage. Not happy? Don't accept: ask for changes, or report a
+          problem to KetaPay, which looks into it.</p>
+        <div class="row"><input id="code" placeholder="Code" inputmode="numeric"><button id="go"></button></div>
+      </div>
+    </section>
+    <aside class="card" id="activity"></aside>
+  </main>
+  <script type="module">
+    import { showActivity } from './activity.js'
+    import { codeStep } from './code-step.js'
+    const id = encodeURIComponent(new URLSearchParams(location.search).get('project'))
+    document.getElementById('other').href = `/freelancer.html?project=${id}`
+    let current = null
+    async function refresh() {
+      const res = await fetch(`/projects/${id}`)
+      if (!res.ok) return void (document.getElementById('status').textContent = 'not found')
+      const project = await res.json()
+      document.getElementById('status').textContent = project.status.replace('_', ' ')
+      document.getElementById('stages').replaceChildren(
+        ...project.milestones.map((m) => Object.assign(document.createElement('li'), {
+          className: m.status === 'released' ? 'done' : '',
+          textContent: `${m.title}: ${m.status}`,
+        })),
+      )
+      // Only the first stage not yet paid can move
+      current = project.milestones.find((m) => m.status === 'funded' || m.status === 'delivered') ?? null
+      for (const el of document.querySelectorAll('.current')) el.textContent = current?.title ?? ''
+      document.getElementById('accept').hidden = current?.status !== 'delivered'
+      const d = current?.delivery
+      document.getElementById('delivery').textContent = d
+        ? `Delivered: ${d.note ?? ''}${d.attachments.length ? ` (${d.attachments.length} file recorded by KetaPay)` : ''}`
+        : ''
+      showActivity(document.getElementById('activity'), `/projects/${id}/activity`)
+    }
+    codeStep({
+      button: document.getElementById('go'),
+      input: document.getElementById('code'),
+      codeUrl: `/projects/${id}/client/code`,
+      confirmUrl: `/projects/${id}/client/release`,
+      extra: () => ({ milestone_id: current?.id }),
+      done: refresh,
+    })
+    refresh()
+    setInterval(refresh, 5000)
+  </script>
+</body>
+</html>

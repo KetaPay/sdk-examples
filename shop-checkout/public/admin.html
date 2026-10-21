@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop admin · Ade Gadgets</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div class="bar"><strong>Ade Gadgets · admin</strong><a href="/">Shop</a></div></header>
+  <main class="wrap split">
+    <section class="card">
+      <h1>Orders</h1>
+      <p class="muted">Ship paid orders here. Your key alone marks them delivered, because you are the seller. You're paid
+        into your KetaPay balance when the buyer confirms, and withdraw it from the dashboard's Payouts.</p>
+      <table><thead><tr><th>Product</th><th>Buyer</th><th>Status</th><th></th></tr></thead><tbody id="orders"></tbody></table>
+    </section>
+    <aside class="card" id="activity"><h2>What's happening</h2><p class="muted">Pick an order to see it on KetaPay.</p></aside>
+  </main>
+  <script type="module">
+    import { showActivity } from './activity.js'
+    let selected = null
+    async function refresh() {
+      const orders = await (await fetch('/orders')).json()
+      document.getElementById('orders').replaceChildren(
+        ...orders.map((o) => {
+          const row = document.createElement('tr')
+          row.innerHTML = '<td></td><td></td><td class="status"></td><td></td>'
+          row.cells[0].textContent = o.product
+          row.cells[1].textContent = o.buyer
+          row.cells[2].textContent = o.status.replace('_', ' ')
+          const view = document.createElement('button')
+          view.className = 'secondary'
+          view.textContent = o.status === 'paid' ? 'Ship' : 'View'
+          view.onclick = async () => {
+            selected = o.id
+            if (o.status === 'paid') {
+              const res = await fetch(`/orders/${o.id}/ship`, { method: 'POST' })
+              if (!res.ok) alert((await res.json()).error)
+            }
+            refresh()
+          }
+          row.cells[3].append(view)
+          return row
+        }),
+      )
+      if (selected) showActivity(document.getElementById('activity'), `/orders/${selected}/activity`)
+    }
+    refresh()
+    setInterval(refresh, 4000)
+  </script>
+</body>
+</html>

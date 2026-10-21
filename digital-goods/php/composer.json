@@ -1,0 +1,14 @@
+{
+    "name": "ketapay/example-digital-goods-php",
+    "description": "A store selling digital goods with instant delivery through KetaPay escrow",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "ketapay/ketapay-php": "^0.1.0-beta.1"
+    },
+    "minimum-stability": "beta",
+    "scripts": {
+        "start": ["Composer\\Config::disableProcessTimeout", "php -S localhost:4242 index.php"]
+    }
+}

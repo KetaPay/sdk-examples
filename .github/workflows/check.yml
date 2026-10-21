@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
 jobs:
-  syntax:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,7 +12,9 @@ jobs:
         with: { node-version: 20 }
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.1' }
-      - name: Node files parse
-        run: find . -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
+      - name: Shared files are in sync
+        run: node tools/sync-shared.mjs --check
+      - name: Node files parse (servers, scenarios, tools; public/ is browser code)
+        run: find . \( -name '*.js' -o -name '*.mjs' \) -not -path '*/node_modules/*' -not -path '*/public/*' -not -path './tools/shared/*' -print0 | xargs -0 -n1 node --check
       - name: PHP files parse
         run: find . -name '*.php' -not -path '*/vendor/*' -print0 | xargs -0 -n1 php -l

@@ -36,3 +36,14 @@ php/    the same in PHP, using ketapay/ketapay-php from Packagist
 - **Catch up after downtime.** Events are kept, so run `catch-up` (or the same code on a schedule) after a
   deploy or an outage instead of trusting that nothing was missed.
 - **Rotate without downtime.** Accept the new and the previous secret until the previous one expires.
+
+## Scenarios
+
+```sh
+cd ../tools && npm install && npm run scenarios -- webhooks node   # or php
+```
+
+1. A delivery signed by KetaPay is verified and answered 200.
+2. The same event delivered twice is answered 200 both times, and handled once.
+3. A delivery signed with any other secret is refused.
+4. A genuine delivery replayed 10 minutes later is refused.

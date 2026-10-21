@@ -1,5 +1,5 @@
-// A freelance platform: a client pays for a project up front in stages (milestones), KetaPay holds
-// the money, and each stage is paid to the freelancer only when the client accepts it.
+// Gigline: a freelance platform. A client pays for a project up front in stages (milestones), KetaPay
+// holds the money, and each stage is paid to the freelancer only when the client accepts it.
 //
 // 1. POST /projects                              checkout session with the plan: Design, Build, Launch
 // 2. KetaPay's page                              the client pays for the whole project
@@ -8,6 +8,7 @@
 // 5. GET /projects/:id                           the stages as KetaPay has them
 //
 // Stages move in order: only the first one not yet paid can be delivered or accepted.
+// The pages in ../public: post a project (/), the client's view and the freelancer's view.
 import express from 'express'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
@@ -34,7 +35,7 @@ app.use(express.static(fileURLToPath(new URL('../public', import.meta.url))))
 
 // Step 1: the client funds the project
 app.post('/projects', express.urlencoded({ extended: false }), async (req, res) => {
-  const project = { id: randomUUID(), status: 'awaiting_payment', escrow_id: null }
+  const project = { id: randomUUID(), status: 'awaiting_payment', escrow_id: null, webhooks: [] }
   const session = await ketapay.checkoutSessions.create({
     amount: 200_000_000, // kobo: ₦2,000,000, the sum of the stages
     category: 'services',
@@ -48,7 +49,7 @@ app.post('/projects', express.urlencoded({ extended: false }), async (req, res) 
     buyer: { email: req.body.client },
     seller: { email: req.body.freelancer },
     external_reference: project.id,
-    return_url: `${BASE_URL}/project.html?project=${project.id}`,
+    return_url: `${BASE_URL}/client.html?project=${project.id}`,
   })
   projects.set(project.id, { ...project, client: req.body.client, freelancer: req.body.freelancer })
   res.redirect(303, session.url)
@@ -62,8 +63,8 @@ app.post('/projects/:id/:role/code', express.json(), async (req, res) => {
   res.json({ session_id: session.id })
 })
 
-// Step 3: the freelancer delivers the current stage. A file link is fetched and kept by KetaPay, so
-// it can't change after delivery (PDF, image, Word or Excel, up to 25 MB).
+// Step 3: the freelancer delivers the current stage. KetaPay fetches a file link once and records its
+// fingerprint (type, size, SHA-256), so a file swapped later is caught (PDF, image, Word or Excel, up to 25 MB).
 app.post('/projects/:id/freelancer/deliver', express.json(), async (req, res) => {
   const project = projects.get(req.params.id)
   if (!project?.escrow_id) return res.sendStatus(404)
@@ -94,6 +95,13 @@ app.get('/projects/:id', async (req, res) => {
   res.json(view(project, project.escrow_id ? await ketapay.escrows.retrieve(project.escrow_id) : null))
 })
 
+// The "what's happening" panel: the escrow as KetaPay has it, and the webhooks Gigline received
+app.get('/projects/:id/activity', async (req, res) => {
+  const project = projects.get(req.params.id)
+  if (!project) return res.sendStatus(404)
+  res.json({ escrow: project.escrow_id ? await ketapay.escrows.retrieve(project.escrow_id) : null, webhooks: project.webhooks })
+})
+
 function view(project, escrow) {
   return {
     id: project.id,
@@ -113,8 +121,11 @@ app.post('/webhooks', express.raw({ type: 'application/json' }), async (req, res
   }
   const escrow = event.data.object
   const project = projects.get(escrow.external_reference)
-  if (project && event.type === 'escrow.funded') Object.assign(project, { status: 'funded', escrow_id: escrow.id })
-  if (project) console.log(`${event.type}: project ${project.id}`)
+  if (project) {
+    project.webhooks.push({ type: event.type, received_at: new Date().toISOString() })
+    if (event.type === 'escrow.funded') Object.assign(project, { status: 'funded', escrow_id: escrow.id })
+    console.log(`${event.type}: project ${project.id}`)
+  }
   res.sendStatus(200)
 })
 
@@ -125,4 +136,4 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Something went wrong' })
 })
 
-app.listen(4242, () => console.log(`Freelance platform running on ${BASE_URL}`))
+app.listen(4242, () => console.log(`Gigline running on ${BASE_URL}`))

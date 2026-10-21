@@ -1,0 +1,13 @@
+{
+  "name": "ketapay-example-digital-goods-node",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@ketapay/node": "^0.1.0-beta.1",
+    "express": "^5.1.0"
+  }
+}

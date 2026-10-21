@@ -1,9 +1,7 @@
 node_modules/
 vendor/
 .env
-shop-checkout/php/var/
 .DS_Store
-webhooks/node/handled.json
-webhooks/php/handled.json
-marketplace/php/var/
-freelance-milestones/php/var/
+# Each example's local data: orders (php/var/) and handled webhook ids
+*/php/var/
+webhooks/*/handled.json
