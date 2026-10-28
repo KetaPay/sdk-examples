@@ -66,7 +66,7 @@ is the same: it still creates the session with your secret key and learns about 
 `escrow.funded`. `onSuccess` only moves the page along; it never marks an order paid.
 
 - **No build step:** click **Pay on this page** on any product. The page loads `@ketapay/checkout` from
-  `https://js.ketapay.com/v1/checkout.js`, and `public/pay-here.js` posts the same form as JSON and calls
+  `https://js.ketapay.com/v0.1.0-beta.2/checkout.js`, and `public/pay-here.js` posts the same form as JSON and calls
   `KetaPay.open({ url })` with the url that comes back.
 - **React:** with a server running on 4242,
 
