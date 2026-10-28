@@ -1,5 +1,5 @@
 // "Pay on this page": opens KetaPay's checkout over the page with @ketapay/checkout instead of sending
-// the buyer to it. The page loads the library with <script src="https://js.ketapay.com/v1/checkout.js">.
+// the buyer to it. The page loads the library with <script src="https://js.ketapay.com/v0.1.0-beta.2/checkout.js">.
 //
 // The form is the same one the redirect button posts. Sent as JSON, the server creates the checkout session
 // exactly as before (with its secret key) and answers { url, return_url } instead of redirecting.
