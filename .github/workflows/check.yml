@@ -3,6 +3,10 @@ on:
   pull_request:
   push:
     branches: [main]
+# A newer push to a PR, or a newer merge into main, cancels the run it replaces.
+concurrency:
+  group: check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
